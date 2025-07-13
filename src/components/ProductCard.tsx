@@ -1,5 +1,6 @@
 import React from "react";
-import { type Product } from "../api/mock";
+import type { Product } from "../types/product";
+import { getProductImageUrl } from "../types/product";
 import { Link } from "react-router-dom";
 import { useAppDispatch } from "../store/hooks";
 import { addToCart } from "../store/cartSlice";
@@ -19,12 +20,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   return (
     <div className="border rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out">
       <Link to={`/products/${product.id}`} className="block">
-        <img
-          src={product.imageUrl}
-          alt={product.name}
-          className="w-full h-56 object-cover"
-        />
         <div className="p-4">
+          <img
+            src={getProductImageUrl(product)}
+            alt={product.name}
+            className="w-full h-48 object-cover rounded-md"
+          />
           <h3 className="text-lg font-semibold text-gray-800">
             {product.name}
           </h3>

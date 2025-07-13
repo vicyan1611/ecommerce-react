@@ -1,34 +1,25 @@
+import type {
+  User,
+  LoginRequest,
+  RegisterRequest,
+  AuthResponse,
+} from "../types/auth";
+
+export interface Category {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface Product {
   id: string;
   name: string;
   price: number;
-  imageUrl: string;
-  category: string;
+  category: string; // Changed to string to match mock data
   description: string;
-  stock: number;
-}
-
-// Auth related interfaces
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  name: string;
-  email: string;
-  password: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
+  inventory_count?: number; // Optional for mock API
+  stock: number; // Keep for backward compatibility
+  imageUrl: string; // Keep for backward compatibility
 }
 
 // Mock users database

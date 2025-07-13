@@ -1,8 +1,9 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import { type Product } from "../api/mock";
+import type { Product } from "../types/product";
+import { getProductImageUrl } from "../types/product";
 
 export interface CartItem {
-  id: string;
+  id: number;
   name: string;
   price: number;
   imageUrl: string;
@@ -38,7 +39,9 @@ const cartSlice = createSlice({
       state,
       action: PayloadAction<Product & { quantity?: number }>
     ) => {
-      const { id, name, price, imageUrl, quantity = 1 } = action.payload;
+      const product = action.payload;
+      const { id, name, price, quantity = 1 } = product;
+      const imageUrl = getProductImageUrl(product);
       const existingItem = state.items.find((item) => item.id === id);
 
       if (existingItem) {
@@ -58,7 +61,7 @@ const cartSlice = createSlice({
       state.totalPrice = totals.totalPrice;
     },
 
-    removeFromCart: (state, action: PayloadAction<string>) => {
+    removeFromCart: (state, action: PayloadAction<number>) => {
       state.items = state.items.filter((item) => item.id !== action.payload);
       const totals = calculateTotals(state.items);
       state.totalItems = totals.totalItems;
@@ -67,7 +70,7 @@ const cartSlice = createSlice({
 
     updateQuantity: (
       state,
-      action: PayloadAction<{ id: string; quantity: number }>
+      action: PayloadAction<{ id: number; quantity: number }>
     ) => {
       const { id, quantity } = action.payload;
       const item = state.items.find((item) => item.id === id);

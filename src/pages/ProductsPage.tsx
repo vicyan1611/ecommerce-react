@@ -5,7 +5,9 @@ import SearchBar from "../components/SearchBar";
 import FilterSidebar from "../components/FilterSidebar";
 import SortDropdown from "../components/SortDropdown";
 import ProductCard from "../components/ProductCard";
-import { fetchProducts, type Product } from "../api/mock";
+import { useQuery, useLazyQuery } from "@apollo/client";
+import { GET_PRODUCTS, SEARCH_PRODUCTS } from "../api/queries";
+import type { Product } from "../types/product";
 
 interface Filters {
   category: string;
@@ -15,36 +17,82 @@ interface Filters {
 }
 
 const ProductsPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filters, setFilters] = useState<Filters>({
     category: "",
     priceRange: "",
   });
   const [sortKey, setSortKey] = useState<string>("name");
+  const [products, setProducts] = useState<Product[]>([]);
+
+  // Query for all products (when no search term)
+  const {
+    loading: allProductsLoading,
+    error: allProductsError,
+    data: allProductsData,
+  } = useQuery(GET_PRODUCTS, {
+    variables: { page: 1, limit: 100 },
+    skip: !!searchTerm,
+  });
+
+  // Lazy query for search (when there's a search term)
+  const [
+    searchProducts,
+    { loading: searchLoading, error: searchError, data: searchData },
+  ] = useLazyQuery(SEARCH_PRODUCTS);
 
   useEffect(() => {
-    const getProducts = async () => {
-      try {
-        setLoading(true);
-        const allProducts = await fetchProducts({
-          search: searchTerm,
-          category: filters.category,
-          minPrice: filters.minPrice,
-          maxPrice: filters.maxPrice,
-          sort: sortKey,
-        });
-        setProducts(allProducts);
-      } catch (error) {
-        console.error("Failed to fetch products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (searchTerm.trim()) {
+      // Use search query
+      searchProducts({
+        variables: {
+          searchTerm: searchTerm.trim(),
+          page: 1,
+          limit: 100,
+          categoryId: filters.category ? parseInt(filters.category) : undefined,
+        },
+      });
+    }
+  }, [searchTerm, filters.category, searchProducts]);
 
-    getProducts();
-  }, [searchTerm, filters, sortKey]);
+  useEffect(() => {
+    let currentProducts: Product[] = [];
+
+    if (searchTerm.trim()) {
+      currentProducts = searchData?.searchProducts || [];
+    } else {
+      currentProducts = allProductsData?.products || [];
+    }
+
+    // Apply client-side filtering for price range
+    if (filters.minPrice !== undefined) {
+      currentProducts = currentProducts.filter(
+        (p) => p.price >= filters.minPrice!
+      );
+    }
+    if (filters.maxPrice !== undefined) {
+      currentProducts = currentProducts.filter(
+        (p) => p.price <= filters.maxPrice!
+      );
+    }
+
+    // Apply client-side sorting
+    const sortedProducts = [...currentProducts];
+    switch (sortKey) {
+      case "price-low":
+        sortedProducts.sort((a, b) => a.price - b.price);
+        break;
+      case "price-high":
+        sortedProducts.sort((a, b) => b.price - a.price);
+        break;
+      case "name":
+      default:
+        sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+    }
+
+    setProducts(sortedProducts);
+  }, [allProductsData, searchData, searchTerm, filters, sortKey]);
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -58,6 +106,9 @@ const ProductsPage: React.FC = () => {
     setSortKey(sort);
   };
 
+  const loading = searchTerm.trim() ? searchLoading : allProductsLoading;
+  const error = searchTerm.trim() ? searchError : allProductsError;
+
   return (
     <div className="bg-gray-50 min-h-screen">
       <Header />
@@ -68,6 +119,12 @@ const ProductsPage: React.FC = () => {
           </h1>
           <SearchBar onSearch={handleSearch} searchTerm={searchTerm} />
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            Error loading products: {error.message}
+          </div>
+        )}
 
         <div className="flex gap-8">
           {/* Filter Sidebar */}

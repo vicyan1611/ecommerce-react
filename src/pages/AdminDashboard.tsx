@@ -2,52 +2,37 @@ import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ProductForm from "../components/ProductForm";
+import { useQuery, useMutation } from "@apollo/client";
 import {
-  fetchProducts,
-  deleteProduct,
-  getProductStats,
-  type Product,
-} from "../api/mock";
+  GET_PRODUCTS,
+  DELETE_PRODUCT,
+  CREATE_PRODUCT,
+  UPDATE_PRODUCT,
+} from "../api/queries";
+import type { Product } from "../types/product";
+import { getProductImageUrl } from "../types/product";
 import { useAppSelector } from "../store/hooks";
 
 const AdminDashboard: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
   const [showBulkActions, setShowBulkActions] = useState<boolean>(false);
-  const [stats, setStats] = useState<{
-    totalProducts: number;
-    totalValue: number;
-    lowStockProducts: Product[];
-    topCategories: { category: string; count: number }[];
-  } | null>(null);
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
-  useEffect(() => {
-    const getProducts = async () => {
-      try {
-        setLoading(true);
-        const allProducts = await fetchProducts();
-        setProducts(allProducts);
-        setFilteredProducts(allProducts);
+  // GraphQL hooks
+  const { loading, error, data, refetch } = useQuery(GET_PRODUCTS, {
+    variables: { page: 1, limit: 1000 },
+  });
 
-        // Load stats
-        const statsData = await getProductStats();
-        setStats(statsData);
-      } catch (error) {
-        console.error("Failed to fetch products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [deleteProductMutation] = useMutation(DELETE_PRODUCT);
+  const [createProductMutation] = useMutation(CREATE_PRODUCT);
+  const [updateProductMutation] = useMutation(UPDATE_PRODUCT);
 
-    getProducts();
-  }, []);
+  const products = data?.products || [];
 
   // Filter products based on search and category
   useEffect(() => {
@@ -55,15 +40,18 @@ const AdminDashboard: React.FC = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(
-        (product) =>
+        (product: Product) =>
           product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.description.toLowerCase().includes(searchTerm.toLowerCase())
+          (product.description &&
+            product.description
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase()))
       );
     }
 
     if (categoryFilter) {
       filtered = filtered.filter(
-        (product) => product.category === categoryFilter
+        (product: Product) => product.category?.name === categoryFilter
       );
     }
 
@@ -72,7 +60,33 @@ const AdminDashboard: React.FC = () => {
     setSelectedProducts([]);
   }, [products, searchTerm, categoryFilter]);
 
-  const handleSelectProduct = (productId: string) => {
+  // Calculate basic stats from products
+  const stats = {
+    totalProducts: products.length,
+    totalValue: products.reduce(
+      (sum: number, p: Product) => sum + p.price * p.inventory_count,
+      0
+    ),
+    lowStockProducts: products.filter((p: Product) => p.inventory_count < 10),
+    topCategories: products
+      .reduce((acc: any, p: Product) => {
+        if (p.category && p.category.name) {
+          const existing = acc.find(
+            (c: any) => c.category === p.category!.name
+          );
+          if (existing) {
+            existing.count++;
+          } else {
+            acc.push({ category: p.category.name, count: 1 });
+          }
+        }
+        return acc;
+      }, [])
+      .sort((a: any, b: any) => b.count - a.count)
+      .slice(0, 5),
+  };
+
+  const handleSelectProduct = (productId: number) => {
     setSelectedProducts((prev) =>
       prev.includes(productId)
         ? prev.filter((id) => id !== productId)
@@ -96,18 +110,12 @@ const AdminDashboard: React.FC = () => {
     ) {
       try {
         for (const productId of selectedProducts) {
-          await deleteProduct(productId);
+          await deleteProductMutation({
+            variables: { id: productId },
+          });
         }
-
-        const updatedProducts = products.filter(
-          (p) => !selectedProducts.includes(p.id)
-        );
-        setProducts(updatedProducts);
         setSelectedProducts([]);
-
-        // Refresh stats
-        const statsData = await getProductStats();
-        setStats(statsData);
+        refetch(); // Refresh the product list
       } catch (error) {
         console.error("Error deleting products:", error);
         alert("Failed to delete some products");
@@ -129,19 +137,13 @@ const AdminDashboard: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleDeleteProduct = async (productId: string) => {
+  const handleDeleteProduct = async (productId: number) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       try {
-        const success = await deleteProduct(productId);
-        if (success) {
-          setProducts(products.filter((p) => p.id !== productId));
-
-          // Refresh stats
-          const statsData = await getProductStats();
-          setStats(statsData);
-        } else {
-          alert("Failed to delete product");
-        }
+        await deleteProductMutation({
+          variables: { id: productId },
+        });
+        refetch(); // Refresh the product list
       } catch (error) {
         console.error("Error deleting product:", error);
         alert("Failed to delete product");
@@ -149,31 +151,48 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleFormSubmit = async (product: Product) => {
-    let updatedProducts: Product[];
-
-    if (selectedProduct) {
-      // Update existing product
-      updatedProducts = products.map((p) =>
-        p.id === selectedProduct.id ? product : p
-      );
-    } else {
-      // Add new product
-      updatedProducts = [...products, product];
-    }
-
-    setProducts(updatedProducts);
-
-    // Refresh stats
+  const handleFormSubmit = async (productData: any) => {
     try {
-      const statsData = await getProductStats();
-      setStats(statsData);
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
-    }
+      if (selectedProduct) {
+        // Update existing product
+        await updateProductMutation({
+          variables: {
+            id: selectedProduct.id,
+            data: {
+              name: productData.name,
+              description: productData.description,
+              price: productData.price,
+              inventory_count: productData.inventory_count,
+              categoryId: productData.categoryId
+                ? parseInt(productData.categoryId)
+                : null,
+            },
+          },
+        });
+      } else {
+        // Create new product
+        await createProductMutation({
+          variables: {
+            data: {
+              name: productData.name,
+              description: productData.description,
+              price: productData.price,
+              inventory_count: productData.inventory_count,
+              categoryId: productData.categoryId
+                ? parseInt(productData.categoryId)
+                : null,
+            },
+          },
+        });
+      }
 
-    setIsFormOpen(false);
-    setSelectedProduct(null);
+      refetch(); // Refresh the product list
+      setIsFormOpen(false);
+      setSelectedProduct(null);
+    } catch (error) {
+      console.error("Error saving product:", error);
+      alert("Failed to save product");
+    }
   };
 
   const handleFormCancel = () => {
@@ -193,6 +212,37 @@ const AdminDashboard: React.FC = () => {
             </h1>
             <p className="text-gray-600">
               You need to be logged in to access the admin dashboard.
+            </p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-gray-50 min-h-screen">
+        <Header />
+        <div className="container mx-auto px-6 py-8">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-gray-50 min-h-screen">
+        <Header />
+        <div className="container mx-auto px-6 py-8">
+          <div className="text-center py-12">
+            <p className="text-red-600">
+              Error loading products: {error.message}
             </p>
           </div>
         </div>
@@ -384,7 +434,7 @@ const AdminDashboard: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <img
-                            src={product.imageUrl}
+                            src={getProductImageUrl(product)}
                             alt={product.name}
                             className="w-10 h-10 rounded-md object-cover mr-3"
                           />
@@ -393,14 +443,16 @@ const AdminDashboard: React.FC = () => {
                               {product.name}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {product.description.substring(0, 50)}...
+                              {product.description
+                                ? `${product.description.substring(0, 50)}...`
+                                : "No description"}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                          {product.category}
+                          {product.category?.name || "Uncategorized"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -410,14 +462,14 @@ const AdminDashboard: React.FC = () => {
                         <div className="flex items-center">
                           <span
                             className={`${
-                              product.stock < 20
+                              product.inventory_count < 20
                                 ? "text-red-600 font-semibold"
                                 : ""
                             }`}
                           >
-                            {product.stock}
+                            {product.inventory_count}
                           </span>
-                          {product.stock < 20 && (
+                          {product.inventory_count < 20 && (
                             <span className="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
                               Low Stock
                             </span>

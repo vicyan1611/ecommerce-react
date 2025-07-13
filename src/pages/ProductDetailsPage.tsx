@@ -1,40 +1,27 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { fetchProducts, type Product } from "../api/mock";
+import { useQuery } from "@apollo/client";
+import { GET_PRODUCT_BY_ID } from "../api/queries";
+import type { Product } from "../types/product";
+import { getProductImageUrl } from "../types/product";
 import { useAppDispatch } from "../store/hooks";
 import { addToCart } from "../store/cartSlice";
 
 const ProductDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
   const [quantity, setQuantity] = useState<number>(1);
   const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    const getProduct = async () => {
-      try {
-        setLoading(true);
-        const allProducts = await fetchProducts();
-        const foundProduct = allProducts.find((p) => p.id === id);
-        setProduct(foundProduct || null);
-      } catch (error) {
-        console.error("Failed to fetch product:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      getProduct();
-    }
-  }, [id]);
+  const { loading, error, data } = useQuery(GET_PRODUCT_BY_ID, {
+    variables: { id: parseInt(id || "0") },
+    skip: !id,
+  });
 
   const handleAddToCart = () => {
-    if (product) {
-      dispatch(addToCart({ ...product, quantity }));
+    if (data?.product) {
+      dispatch(addToCart({ ...data.product, quantity }));
     }
   };
 
@@ -53,13 +40,15 @@ const ProductDetailsPage: React.FC = () => {
     );
   }
 
-  if (!product) {
+  if (error || !data?.product) {
     return (
       <div className="bg-gray-50 min-h-screen">
         <Header />
         <div className="container mx-auto px-6 py-8">
           <div className="text-center py-12">
-            <p className="text-gray-600 text-lg">Product not found.</p>
+            <p className="text-gray-600 text-lg">
+              {error ? `Error: ${error.message}` : "Product not found."}
+            </p>
             <Link
               to="/products"
               className="text-blue-600 hover:text-blue-800 mt-4 inline-block"
@@ -72,6 +61,8 @@ const ProductDetailsPage: React.FC = () => {
       </div>
     );
   }
+
+  const product: Product = data.product;
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -87,7 +78,7 @@ const ProductDetailsPage: React.FC = () => {
           {/* Product Image */}
           <div className="aspect-square bg-white rounded-lg shadow-md overflow-hidden">
             <img
-              src={product.imageUrl}
+              src={getProductImageUrl(product)}
               alt={product.name}
               className="w-full h-full object-cover"
             />
@@ -98,12 +89,21 @@ const ProductDetailsPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-4">
               {product.name}
             </h1>
-            <p className="text-sm text-gray-600 mb-4">
-              Category: {product.category}
-            </p>
+            {product.category && (
+              <p className="text-sm text-gray-600 mb-4">
+                Category: {product.category.name}
+              </p>
+            )}
             <p className="text-4xl font-bold text-gray-900 mb-8">
               ${product.price.toFixed(2)}
             </p>
+
+            {/* Stock Information */}
+            <div className="mb-6">
+              <p className="text-sm text-gray-600">
+                In Stock: {product.inventory_count} available
+              </p>
+            </div>
 
             {/* Quantity Selector */}
             <div className="mb-6">
@@ -119,20 +119,27 @@ const ProductDetailsPage: React.FC = () => {
                 onChange={(e) => setQuantity(parseInt(e.target.value))}
                 className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {[...Array(10)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1}
-                  </option>
-                ))}
+                {[...Array(Math.min(10, product.inventory_count))].map(
+                  (_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      {i + 1}
+                    </option>
+                  )
+                )}
               </select>
             </div>
 
             {/* Add to Cart Button */}
             <button
               onClick={handleAddToCart}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 mb-4"
+              disabled={product.inventory_count === 0}
+              className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors duration-200 mb-4 ${
+                product.inventory_count === 0
+                  ? "bg-gray-400 text-gray-600 cursor-not-allowed"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
             >
-              Add to Cart
+              {product.inventory_count === 0 ? "Out of Stock" : "Add to Cart"}
             </button>
 
             {/* Product Description */}
@@ -141,11 +148,12 @@ const ProductDetailsPage: React.FC = () => {
                 Product Description
               </h3>
               <p className="text-gray-700 leading-relaxed">
-                This is a high-quality {product.name.toLowerCase()} from the{" "}
-                {product.category} category. Perfect for those who appreciate
-                excellent craftsmanship and reliable performance. This product
-                offers great value for money and comes with our satisfaction
-                guarantee.
+                {product.description ||
+                  `This is a high-quality ${product.name.toLowerCase()} ${
+                    product.category
+                      ? `from the ${product.category.name} category`
+                      : ""
+                  }. Perfect for those who appreciate excellent craftsmanship and reliable performance. This product offers great value for money and comes with our satisfaction guarantee.`}
               </p>
             </div>
           </div>

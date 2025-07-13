@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useAppDispatch } from "../store/hooks";
 import { setLoading, loginSuccess, loginFailure } from "../store/authSlice";
-import { login, type LoginRequest } from "../api/mock";
+import { login } from "../api/mock";
+import type { LoginRequest } from "../types/auth";
 
 interface LoginFormProps {
   onSuccess?: () => void;

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useAppDispatch } from "../store/hooks";
 import { setLoading, loginSuccess, loginFailure } from "../store/authSlice";
-import { register, type RegisterRequest } from "../api/mock";
+import { register } from "../api/mock";
+import type { RegisterRequest } from "../types/auth";
 
 interface RegisterFormProps {
   onSuccess?: () => void;

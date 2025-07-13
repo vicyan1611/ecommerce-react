@@ -1,19 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { type Product, createProduct, updateProduct } from "../api/mock";
+import type { Product } from "../types/product";
+import { getProductImageUrl } from "../types/product";
 import ImageUploader from "./ImageUploader";
 
 interface ProductFormData {
   name: string;
   price: string;
-  category: string;
+  categoryId: string;
   description: string;
-  stock: string;
+  inventory_count: string;
   imageUrl: string;
 }
 
 interface ProductFormProps {
   product?: Product | null;
-  onSubmit: (product: Product) => void;
+  onSubmit: (productData: {
+    name: string;
+    price: number;
+    categoryId?: string;
+    description: string;
+    inventory_count: number;
+  }) => void;
   onCancel: () => void;
 }
 
@@ -25,9 +32,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
     price: "",
-    category: "",
+    categoryId: "",
     description: "",
-    stock: "",
+    inventory_count: "",
     imageUrl: "",
   });
 
@@ -39,19 +46,19 @@ const ProductForm: React.FC<ProductFormProps> = ({
       setFormData({
         name: product.name,
         price: product.price.toString(),
-        category: product.category,
-        description: product.description,
-        stock: product.stock.toString(),
-        imageUrl: product.imageUrl,
+        categoryId: product.category?.id.toString() || "",
+        description: product.description || "",
+        inventory_count: product.inventory_count.toString(),
+        imageUrl: getProductImageUrl(product),
       });
     }
   }, [product]);
 
   const categories = [
-    { value: "Electronics", label: "Electronics" },
-    { value: "Wearables", label: "Wearables" },
-    { value: "Audio", label: "Audio" },
-    { value: "Peripherals", label: "Peripherals" },
+    { value: "1", label: "Electronics" },
+    { value: "2", label: "Wearables" },
+    { value: "3", label: "Audio" },
+    { value: "4", label: "Peripherals" },
   ];
 
   const handleChange = (
@@ -87,18 +94,21 @@ const ProductForm: React.FC<ProductFormProps> = ({
       newErrors.price = "Price must be a positive number";
     }
 
-    if (!formData.category) {
-      newErrors.category = "Category is required";
+    if (!formData.categoryId) {
+      newErrors.categoryId = "Category is required";
     }
 
     if (!formData.description.trim()) {
       newErrors.description = "Description is required";
     }
 
-    if (!formData.stock.trim()) {
-      newErrors.stock = "Stock is required";
-    } else if (isNaN(Number(formData.stock)) || Number(formData.stock) < 0) {
-      newErrors.stock = "Stock must be a non-negative number";
+    if (!formData.inventory_count.trim()) {
+      newErrors.inventory_count = "Stock is required";
+    } else if (
+      isNaN(Number(formData.inventory_count)) ||
+      Number(formData.inventory_count) < 0
+    ) {
+      newErrors.inventory_count = "Stock must be a non-negative number";
     }
 
     if (!formData.imageUrl.trim()) {
@@ -122,26 +132,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
       const productData = {
         name: formData.name.trim(),
         price: Number(formData.price),
-        category: formData.category,
+        categoryId: formData.categoryId,
         description: formData.description.trim(),
-        stock: Number(formData.stock),
-        imageUrl: formData.imageUrl,
+        inventory_count: Number(formData.inventory_count),
       };
 
-      let result: Product;
-      if (product?.id) {
-        // Update existing product
-        const updated = await updateProduct(product.id, productData);
-        if (!updated) {
-          throw new Error("Failed to update product");
-        }
-        result = updated;
-      } else {
-        // Create new product
-        result = await createProduct(productData);
-      }
-
-      onSubmit(result);
+      onSubmit(productData);
     } catch (error) {
       console.error("Error submitting product:", error);
       setErrors({ name: "Failed to save product. Please try again." });
@@ -232,18 +228,18 @@ const ProductForm: React.FC<ProductFormProps> = ({
             {/* Category */}
             <div>
               <label
-                htmlFor="category"
+                htmlFor="categoryId"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
                 Category
               </label>
               <select
-                id="category"
-                name="category"
-                value={formData.category}
+                id="categoryId"
+                name="categoryId"
+                value={formData.categoryId}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.category ? "border-red-500" : "border-gray-300"
+                  errors.categoryId ? "border-red-500" : "border-gray-300"
                 }`}
               >
                 <option value="">Select a category</option>
@@ -253,8 +249,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   </option>
                 ))}
               </select>
-              {errors.category && (
-                <p className="mt-1 text-sm text-red-600">{errors.category}</p>
+              {errors.categoryId && (
+                <p className="mt-1 text-sm text-red-600">{errors.categoryId}</p>
               )}
             </div>
 
@@ -287,25 +283,27 @@ const ProductForm: React.FC<ProductFormProps> = ({
             {/* Stock */}
             <div>
               <label
-                htmlFor="stock"
+                htmlFor="inventory_count"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
                 Stock Quantity
               </label>
               <input
                 type="number"
-                id="stock"
-                name="stock"
-                value={formData.stock}
+                id="inventory_count"
+                name="inventory_count"
+                value={formData.inventory_count}
                 onChange={handleChange}
                 min="0"
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.stock ? "border-red-500" : "border-gray-300"
+                  errors.inventory_count ? "border-red-500" : "border-gray-300"
                 }`}
                 placeholder="0"
               />
-              {errors.stock && (
-                <p className="mt-1 text-sm text-red-600">{errors.stock}</p>
+              {errors.inventory_count && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.inventory_count}
+                </p>
               )}
             </div>
 
