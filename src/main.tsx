@@ -27,7 +27,7 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
 
 const httpLink = createHttpLink({
-  uri: "http://localhost:3000/api",
+  uri: import.meta.env.VITE_API_ENDPOINT,
 });
 
 const authLink = setContext((_, { headers }) => {
