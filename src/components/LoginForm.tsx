@@ -1,7 +1,8 @@
 import React, { useState } from "react";
+import { useMutation } from "@apollo/client";
 import { useAppDispatch } from "../store/hooks";
 import { setLoading, loginSuccess, loginFailure } from "../store/authSlice";
-import { login } from "../api/mock";
+import { LOGIN_MUTATION } from "../api/queries";
 import type { LoginRequest } from "../types/auth";
 
 interface LoginFormProps {
@@ -16,6 +17,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   const [error, setError] = useState<string>("");
   const dispatch = useAppDispatch();
 
+  const [loginMutation] = useMutation(LOGIN_MUTATION);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -29,16 +32,28 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     dispatch(setLoading(true));
 
     try {
-      const response = await login(formData);
-      if (response) {
-        dispatch(loginSuccess(response));
+      const { data } = await loginMutation({
+        variables: { data: formData },
+      });
+
+      if (data?.login) {
+        dispatch(
+          loginSuccess({
+            user: data.login.user,
+            accessToken: data.login.accessToken,
+            refreshToken: data.login.refreshToken,
+          })
+        );
         onSuccess?.();
       } else {
         setError("Invalid email or password");
         dispatch(loginFailure());
       }
-    } catch (err) {
-      setError("Login failed. Please try again.");
+    } catch (err: any) {
+      console.error("Login error:", err);
+      const errorMessage =
+        err.graphQLErrors?.[0]?.message || "Login failed. Please try again.";
+      setError(errorMessage);
       dispatch(loginFailure());
     }
   };
@@ -95,10 +110,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
       >
         Sign In
       </button>
-
-      <div className="text-sm text-center text-gray-600">
-        Demo credentials: demo@example.com / password123
-      </div>
     </form>
   );
 };

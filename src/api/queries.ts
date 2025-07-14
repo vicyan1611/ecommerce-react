@@ -174,3 +174,80 @@ export const DELETE_PRODUCT = gql`
 
 // Legacy alias for backward compatibility
 export const GET_FEATURE_PRODUCTS = GET_PRODUCTS;
+
+// User Authentication Queries and Mutations
+export const ME_QUERY = gql`
+  query Me {
+    me {
+      id
+      user_id
+      email
+      name
+      is_admin
+      created_at
+      updated_at
+    }
+  }
+`;
+
+export const REGISTER_MUTATION = gql`
+  mutation Register($data: RegisterInput!) {
+    register(data: $data) {
+      user {
+        id
+        user_id
+        email
+        name
+        is_admin
+        created_at
+        updated_at
+      }
+      accessToken
+      refreshToken
+    }
+  }
+`;
+
+export const LOGIN_MUTATION = gql`
+  mutation Login($data: LoginInput!) {
+    login(data: $data) {
+      user {
+        id
+        user_id
+        email
+        name
+        is_admin
+        created_at
+        updated_at
+      }
+      accessToken
+      refreshToken
+    }
+  }
+`;
+
+export const UPDATE_PROFILE_MUTATION = gql`
+  mutation UpdateProfile($data: UpdateProfileInput!) {
+    updateProfile(data: $data) {
+      id
+      user_id
+      email
+      name
+      is_admin
+      created_at
+      updated_at
+    }
+  }
+`;
+
+export const CHANGE_PASSWORD_MUTATION = gql`
+  mutation ChangePassword($data: ChangePasswordInput!) {
+    changePassword(data: $data)
+  }
+`;
+
+export const DELETE_ACCOUNT_MUTATION = gql`
+  mutation DeleteAccount {
+    deleteAccount
+  }
+`;

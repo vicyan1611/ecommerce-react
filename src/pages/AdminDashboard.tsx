@@ -11,7 +11,6 @@ import {
 } from "../api/queries";
 import type { Product } from "../types/product";
 import { getProductImageUrl } from "../types/product";
-import { useAppSelector } from "../store/hooks";
 
 const AdminDashboard: React.FC = () => {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -21,7 +20,6 @@ const AdminDashboard: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
   const [showBulkActions, setShowBulkActions] = useState<boolean>(false);
-  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
   // GraphQL hooks
   const { loading, error, data, refetch } = useQuery(GET_PRODUCTS, {
@@ -200,26 +198,6 @@ const AdminDashboard: React.FC = () => {
     setSelectedProduct(null);
   };
 
-  // Simple admin check - in a real app, you'd have proper role-based access control
-  if (!isAuthenticated) {
-    return (
-      <div className="bg-gray-50 min-h-screen">
-        <Header />
-        <div className="container mx-auto px-6 py-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Access Denied
-            </h1>
-            <p className="text-gray-600">
-              You need to be logged in to access the admin dashboard.
-            </p>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div className="bg-gray-50 min-h-screen">
@@ -259,7 +237,7 @@ const AdminDashboard: React.FC = () => {
           <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
             Admin Dashboard
           </h1>
-          <p className="text-gray-600">Welcome, {user?.name}</p>
+          <p className="text-gray-600">Manage your products and inventory</p>
         </div>
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">

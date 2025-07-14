@@ -1,34 +1,36 @@
 import React, { useEffect } from "react";
+import { useLazyQuery } from "@apollo/client";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setUser, logout } from "../store/authSlice";
+import { ME_QUERY } from "../api/queries";
 
 const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const dispatch = useAppDispatch();
-  const { token } = useAppSelector((state) => state.auth);
+  const { accessToken } = useAppSelector((state) => state.auth);
+  const [meQuery] = useLazyQuery(ME_QUERY);
 
   useEffect(() => {
     // Check if there's a stored token and validate it
-    if (token) {
-      // In a real app, you would validate the token with your backend
-      // For now, we'll just check if it's the expected mock token
-      if (token === "fake-jwt-token") {
-        // In a real app, you would decode the JWT or make an API call to get user info
-        // For now, we'll use the demo user
-        dispatch(
-          setUser({
-            id: "user1",
-            email: "demo@example.com",
-            name: "Demo User",
-          })
-        );
-      } else {
-        // Invalid token, remove it
-        dispatch(logout());
-      }
+    if (accessToken) {
+      // Make a query to validate the token and get user info
+      meQuery()
+        .then(({ data, error }) => {
+          if (data?.me) {
+            dispatch(setUser(data.me));
+          } else if (error) {
+            // Token is invalid, remove it
+            console.error("Token validation failed:", error);
+            dispatch(logout());
+          }
+        })
+        .catch((error) => {
+          console.error("Error validating token:", error);
+          dispatch(logout());
+        });
     }
-  }, [token, dispatch]);
+  }, [accessToken, dispatch, meQuery]);
 
   return <>{children}</>;
 };

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
+import { useMutation } from "@apollo/client";
 import { useAppDispatch } from "../store/hooks";
 import { setLoading, loginSuccess, loginFailure } from "../store/authSlice";
-import { register } from "../api/mock";
+import { REGISTER_MUTATION } from "../api/queries";
 import type { RegisterRequest } from "../types/auth";
 
 interface RegisterFormProps {
@@ -17,6 +18,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
   const dispatch = useAppDispatch();
+
+  const [registerMutation] = useMutation(REGISTER_MUTATION);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -39,25 +42,38 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
       return;
     }
 
-    // Validate password length
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long");
+    // Validate password length (API requires minimum 8 characters)
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long");
       return;
     }
 
     dispatch(setLoading(true));
 
     try {
-      const response = await register(formData);
-      if (response) {
-        dispatch(loginSuccess(response));
+      const { data } = await registerMutation({
+        variables: { data: formData },
+      });
+
+      if (data?.register) {
+        dispatch(
+          loginSuccess({
+            user: data.register.user,
+            accessToken: data.register.accessToken,
+            refreshToken: data.register.refreshToken,
+          })
+        );
         onSuccess?.();
       } else {
-        setError("Email already exists. Please use a different email.");
+        setError("Registration failed. Please try again.");
         dispatch(loginFailure());
       }
-    } catch (err) {
-      setError("Registration failed. Please try again.");
+    } catch (err: any) {
+      console.error("Registration error:", err);
+      const errorMessage =
+        err.graphQLErrors?.[0]?.message ||
+        "Registration failed. Please try again.";
+      setError(errorMessage);
       dispatch(loginFailure());
     }
   };

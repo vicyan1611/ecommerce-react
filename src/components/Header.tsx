@@ -26,9 +26,6 @@ const Header: React.FC = () => {
           <Link to="/products" className="text-gray-600 hover:text-blue-500">
             Products
           </Link>
-          <Link to="/admin" className="text-gray-600 hover:text-blue-500">
-            Admin
-          </Link>
         </div>
 
         <div className="relative">
@@ -67,6 +64,20 @@ const Header: React.FC = () => {
           {isAuthenticated ? (
             <div className="flex items-center space-x-3">
               <span className="text-gray-600">Welcome, {user?.name}</span>
+              <Link
+                to="/profile"
+                className="text-gray-600 hover:text-blue-500 text-sm"
+              >
+                Profile
+              </Link>
+              {user?.is_admin && (
+                <Link
+                  to="/admin"
+                  className="text-gray-600 hover:text-blue-500 text-sm"
+                >
+                  Admin
+                </Link>
+              )}
               <button
                 onClick={handleLogout}
                 className="text-gray-600 hover:text-red-500 text-sm"
