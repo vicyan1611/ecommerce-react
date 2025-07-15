@@ -8,6 +8,7 @@ const env = loadEnv(process.env.NODE_ENV as string, process.cwd(), "VITE_");
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    allowedHosts: true,
     proxy: {
       "/api": {
         target: env.VITE_API_ENDPOINT, // Your backend server address
