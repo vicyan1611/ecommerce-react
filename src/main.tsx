@@ -28,6 +28,9 @@ import ProfilePage from "./pages/ProfilePage.tsx";
 
 const httpLink = createHttpLink({
   uri: "/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 const authLink = setContext((_, { headers }) => {
