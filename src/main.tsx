@@ -29,6 +29,7 @@ import ProfilePage from "./pages/ProfilePage.tsx";
 const httpLink = createHttpLink({
   uri: "/api",
   headers: {
+    "apollo-require-preflight": "true",
     "Content-Type": "application/json",
   },
 });
