@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { getPresignedUrl } from "../api/mock";
+import { getPresignedUrl } from "../api/uploadService";
 
 interface ImageUploaderProps {
   onUpload: (imageUrl: string) => void;
@@ -39,8 +39,11 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     setIsUploading(true);
 
     try {
-      // Step 1: Get presigned URL from backend
-      const { uploadUrl, imageUrl } = await getPresignedUrl(file.name);
+      // Step 1: Get presigned URL from API Gateway
+      const { uploadUrl, imageUrl } = await getPresignedUrl(
+        file.name,
+        file.type
+      );
 
       // Step 2: Upload file directly to S3 using presigned URL
       const uploadResponse = await fetch(uploadUrl, {
@@ -58,9 +61,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       }
     } catch (error) {
       console.error("Upload error:", error);
-      // Fallback to local object URL for demo
-      const localUrl = URL.createObjectURL(file);
-      onUpload(localUrl);
+      setError("Failed to upload image. Please try again.");
     } finally {
       setIsUploading(false);
     }

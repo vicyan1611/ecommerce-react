@@ -11,7 +11,7 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       "/api": {
-        target: env.VITE_API_ENDPOINT, // Your backend server address
+        target: "http://localhost:3000", // Your backend server address
         changeOrigin: true, // Recommended for virtual-hosted sites
         secure: false, // Set to false if your backend uses a self-signed SSL cert
         rewrite: (path) => path.replace(/^\/api/, ""), // Optional: remove /api from the start of the path

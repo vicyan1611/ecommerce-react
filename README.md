@@ -49,8 +49,14 @@ Here’s a breakdown of the components and state management for each page.
 - **Components:** `ProductForm`, `ImageUploader`.
 - **State:** State to manage the product form fields (name, price, etc.) and the file for the image uploader.
 - **Backend Interaction:**
-  - **Image Upload:** The `ImageUploader` component will make a `POST` request to a presigned S3 URL (requested from your backend) to upload the image directly to S3. This is a common and secure pattern that avoids proxying the file through your server.
+  - **Image Upload:** The `ImageUploader` component makes a `POST` request to the AWS API Gateway endpoint to get a presigned S3 URL. The request includes `fileName` and `fileType` in the JSON body. Once the presigned URL is received, the component makes a direct `PUT` request to the S3 presigned URL to upload the image securely.
   - **Product Creation/Update:** The form submission will trigger a `POST` (create) or `PUT` (update) request to `/api/products` with the product details.
+
+#### **Environment Variables**
+
+Make sure to set up the following environment variables in your `.env` file:
+
+- `VITE_API_GATEWAY_ENDPOINT`: The AWS API Gateway endpoint for getting presigned URLs for image uploads
 
 ---
 

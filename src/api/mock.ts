@@ -307,20 +307,20 @@
 //   });
 // };
 
-// Mock S3 presigned URL request
-export const getPresignedUrl = (
-  filename: string
-): Promise<{ uploadUrl: string; imageUrl: string }> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // In a real app, this would return actual S3 presigned URLs
-      resolve({
-        uploadUrl: `https://fake-s3-bucket.s3.amazonaws.com/uploads/${filename}`,
-        imageUrl: `https://fake-s3-bucket.s3.amazonaws.com/uploads/${filename}`,
-      });
-    }, 300);
-  });
-};
+// Mock S3 presigned URL request (replaced with real API Gateway implementation)
+// export const getPresignedUrl = (
+//   filename: string
+// ): Promise<{ uploadUrl: string; imageUrl: string }> => {
+//   return new Promise((resolve) => {
+//     setTimeout(() => {
+//       // In a real app, this would return actual S3 presigned URLs
+//       resolve({
+//         uploadUrl: `https://fake-s3-bucket.s3.amazonaws.com/uploads/${filename}`,
+//         imageUrl: `https://fake-s3-bucket.s3.amazonaws.com/uploads/${filename}`,
+//       });
+//     }, 300);
+//   });
+// };
 
 // // Additional admin features
 // export const getProductStats = (): Promise<{
